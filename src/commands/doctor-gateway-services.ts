@@ -52,7 +52,7 @@ function findGatewayEntrypoint(programArguments?: string[]): string | null {
 }
 
 async function normalizeExecutablePath(value: string): Promise<string> {
-  const resolvedPath = path.resolve(value);
+  const resolvedPath = path.isAbsolute(value) ? value : path.resolve(value);
   try {
     return await fs.realpath(resolvedPath);
   } catch {

@@ -10,42 +10,20 @@ type GatewayProgramArgs = {
 type GatewayRuntimePreference = "auto" | "node" | "bun";
 
 async function resolveCliEntrypointPathForService(): Promise<string> {
-  let argvEntrypoint: string | null = null;
-  let argvError: unknown;
-
-  try {
-    argvEntrypoint = await resolveCliEntrypointFromArgvPath();
-  } catch (error) {
-    argvError = error;
-  }
+  const argvEntrypoint = await resolveCliEntrypointFromArgvPath();
 
   const globalEntrypoint = await resolveCliEntrypointFromGlobalBinary();
-  if (argvEntrypoint && globalEntrypoint) {
+  if (globalEntrypoint) {
     const isSameInstall = await areEntrypointsFromSameInstall(argvEntrypoint, globalEntrypoint);
     if (isSameInstall) {
       // Use PATH-discovered symlink when it points at the same install as the
       // invoking CLI, so service configs stay stable across version updates.
       return globalEntrypoint;
     }
-
-    // The invoking CLI and PATH openclaw resolve to different installs.
-    // Keep the service pinned to the binary that actually ran this command.
-    return argvEntrypoint;
   }
 
-  if (argvEntrypoint) {
-    return argvEntrypoint;
-  }
-
-  if (globalEntrypoint) {
-    return globalEntrypoint;
-  }
-
-  if (argvError instanceof Error) {
-    throw argvError;
-  }
-
-  throw new Error("Unable to resolve CLI entrypoint path");
+  // Keep the service pinned to the binary that actually ran this command.
+  return argvEntrypoint;
 }
 
 async function resolveCliEntrypointFromArgvPath(): Promise<string> {

@@ -152,6 +152,29 @@ describe("resolveGatewayProgramArguments", () => {
     expect(result.programArguments[1]).not.toBe(globalSymlinkEntrypoint);
   });
 
+  it("throws invoking CLI error instead of silently falling back to PATH openclaw", async () => {
+    const argv1 = path.resolve("/tmp/dev/openclaw/src/index.ts");
+    const globalBin = path.resolve("/Users/test/Library/pnpm/global/5/node_modules/.bin/openclaw");
+    const globalSymlinkEntrypoint = path.resolve(
+      "/Users/test/Library/pnpm/global/5/node_modules/openclaw/dist/index.js",
+    );
+
+    process.argv = ["node", argv1];
+    childProcessMocks.execFileSync.mockReturnValue(`${globalBin}\n`);
+    fsMocks.realpath.mockImplementation(async (target: string) => target);
+    fsMocks.access.mockImplementation(async (target: string) => {
+      if (target === globalBin || target === globalSymlinkEntrypoint) {
+        return;
+      }
+      throw new Error("missing");
+    });
+
+    await expect(resolveGatewayProgramArguments({ port: 18789 })).rejects.toThrow(
+      /Cannot find built CLI/,
+    );
+    expect(childProcessMocks.execFileSync).not.toHaveBeenCalled();
+  });
+
   it("prefers symlinked path over realpath for stable service config", async () => {
     // Simulates pnpm global install where node_modules/openclaw is a symlink
     // to .pnpm/openclaw@X.Y.Z/node_modules/openclaw
